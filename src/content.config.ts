@@ -1,5 +1,6 @@
 import { glob } from 'astro/loaders';
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
+import { z } from 'astro/zod';
 // 接入 Notion 数据源，需要将下面的注释去掉
 // import { notionLoader } from 'notion-astro-loader';
 const SCHEMA = z.object({
@@ -16,9 +17,14 @@ const SCHEMA = z.object({
   // 封面图
   image: z.string().optional(),
   // 发布时间
-  publishDate: z.string().transform((str) => new Date(str)),
+  publishDate: z
+    .string()
+    .transform((str) => new Date(str))
+    .refine((d) => !isNaN(d.getTime()), { message: 'Invalid publishDate' }),
   // 是否置顶
-  pin: z.boolean().optional()
+  pin: z.boolean().optional(),
+  // 文章正文是否包含 Twitter 嵌入，为 true 时会加载 Twitter widgets.js
+  twitterEmbed: z.boolean().optional()
 });
 
 const Docs = defineCollection({
@@ -27,8 +33,8 @@ const Docs = defineCollection({
     pattern: ['**/[^_]*.md', '**/[^_]*.mdx'],
     base: './src/content/doc',
     generateId: ({ entry, data }) => {
-      if (data.slug) {
-        return data.slug as string;
+      if (typeof data.slug === 'string' && data.slug) {
+        return data.slug;
       }
       return entry.replace(/\.[^/.]+$/, '');
     }
